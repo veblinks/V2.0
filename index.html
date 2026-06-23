@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ERROR HUB PREMIUM</title>
+<style>
+  :root{
+    --pink:#ff1f8f; --pink-glow:rgba(255,31,143,.55); --pink-soft:rgba(255,31,143,.15);
+    --bg-0:#05030a; --bg-1:#0b0612; --text:#f5e8f3; --muted:#8a7a92;
+    --line:rgba(255,31,143,.35); --ok:#3bff9a; --err:#ff4d6d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:'Segoe UI',Tahoma,sans-serif;color:var(--text);
+    background:
+      radial-gradient(1200px 800px at 80% 10%, #2a0a26 0%, transparent 60%),
+      radial-gradient(900px 700px at 10% 90%, #1a0420 0%, transparent 60%),
+      linear-gradient(180deg,var(--bg-0),var(--bg-1));
+    display:flex;align-items:center;justify-content:center;position:relative;
+  }
+  canvas#particles{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+
+  .card{
+    position:relative;z-index:2;width:min(420px,92vw);padding:38px 30px 30px;
+    background:linear-gradient(160deg,#13071c 0%, #0a0411 100%);
+    border:1px solid var(--line);
+    box-shadow:0 0 0 1px rgba(255,31,143,.08),0 30px 80px rgba(255,31,143,.18),inset 0 0 40px rgba(255,31,143,.05);
+    clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+    overflow:hidden;
+  }
+  .card::before{content:"";position:absolute;inset:0;background:radial-gradient(400px 200px at 50% -20%, var(--pink-soft), transparent 70%);pointer-events:none}
+  
+  .logo-img{
+    display:flex;justify-content:center;margin-bottom:12px;
+  }
+  .logo-img img{
+    width:90px;height:90px;object-fit:contain;
+    filter:drop-shadow(0 0 30px var(--pink-glow));
+    animation: spin 6s linear infinite;
+  }
+  @keyframes spin{
+    from{transform:rotate(0deg)}
+    to{transform:rotate(360deg)}
+  }
+  
+  .logo{
+    display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;margin-bottom:22px;
+  }
+  .logo h1{
+    font-size:22px;letter-spacing:6px;font-weight:800;
+    background:linear-gradient(90deg,#fff,var(--pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-align:center;
+  }
+  .logo small{
+    color:var(--muted);letter-spacing:3px;font-size:10px;
+  }
+  
+  label{display:block;font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
+  .field{
+    display:flex;align-items:center;background:#0a0410;border:1px solid var(--line);
+    padding:12px 14px;margin-bottom:18px;
+    clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .field input{flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:14px;letter-spacing:2px}
+  .field input::placeholder{color:#5a4a62;letter-spacing:1px}
+  .btn{
+    width:100%;padding:13px;border:0;cursor:pointer;
+    background:linear-gradient(90deg,var(--pink),#c70d6e);
+    color:#fff;font-weight:800;letter-spacing:4px;font-size:13px;
+    box-shadow:0 10px 30px var(--pink-glow);
+    clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    transition:transform .15s ease;
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .status{margin-top:16px;text-align:center;font-size:12px;letter-spacing:2px;color:var(--muted);min-height:18px}
+  .status.ok{color:var(--ok)} .status.err{color:var(--err)}
+
+  .panel{
+    display:none;position:fixed;inset:0;z-index:5;
+    background:
+      radial-gradient(1200px 800px at 80% 10%, #2a0a26 0%, transparent 60%),
+      radial-gradient(900px 700px at 10% 90%, #1a0420 0%, transparent 60%),
+      linear-gradient(180deg,var(--bg-0),var(--bg-1));
+    overflow:auto;
+  }
+  .panel.active{display:block}
+  .panel-wrap{max-width:1100px;margin:0 auto;padding:24px;padding-bottom:24px}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;margin-bottom:22px;
+    border:1px solid var(--line);background:rgba(10,4,16,.7);
+    clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  .brand{
+    display:flex;align-items:center;gap:12px;
+  }
+  .brand .brand-img{
+    width:40px;height:40px;border-radius:50%;object-fit:contain;
+    animation: spin 6s linear infinite;
+    filter:drop-shadow(0 0 15px var(--pink-glow));
+  }
+  .brand b{
+    letter-spacing:4px;font-size:14px;
+    background:linear-gradient(90deg,#fff,var(--pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .user{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted);letter-spacing:2px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+  /* КНОПКА SAIR УДАЛЕНА */
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+  .stat{
+    padding:18px;border:1px solid var(--line);
+    background:linear-gradient(160deg,#120620,#0a0411);
+    clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    position:relative;overflow:hidden;
+  }
+  .stat::after{content:"";position:absolute;right:-30px;top:-30px;width:90px;height:90px;background:radial-gradient(circle,var(--pink-soft),transparent 70%)}
+  .stat .k{font-size:10px;letter-spacing:3px;color:var(--muted)}
+  .stat .v{font-size:26px;font-weight:800;margin-top:6px;color:#fff}
+  .stat .s{font-size:11px;color:var(--ok);margin-top:4px}
+
+  .box{
+    border:1px solid var(--line);
+    background:linear-gradient(160deg,#10051a,#080310);
+    clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    padding:18px;
+    margin-bottom:18px;
+  }
+  .box h3{font-size:12px;letter-spacing:3px;color:var(--pink);margin-bottom:14px;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+  
+  .mods{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mod{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0a0410;border:1px solid rgba(255,31,143,.2);font-size:12px}
+  .switch{position:relative;width:38px;height:20px;background:#2a1030;border-radius:20px;cursor:pointer;transition:.2s;flex-shrink:0}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#888;transition:.2s}
+  .switch.on{background:var(--pink);box-shadow:0 0 12px var(--pink-glow)}
+  .switch.on::after{left:20px;background:#fff}
+
+  .aim-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .aim-item{background:#0a0410;border:1px solid rgba(255,31,143,.2);padding:14px;opacity:.4;transition:.3s}
+  .aim-item.active{opacity:1;border-color:var(--pink)}
+  .aim-item label{font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between}
+  .aim-item input[type="range"]{width:100%;background:transparent;accent-color:var(--pink);cursor:pointer}
+  .aim-item input[type="range"]:disabled{opacity:.2;cursor:not-allowed}
+  .aim-item .val{color:var(--pink);font-weight:700;font-size:13px}
+  .aim-item .desc{font-size:9px;color:var(--muted);margin-top:4px}
+
+  .log{
+    background:#06020c;border:1px solid rgba(255,31,143,.2);
+    padding:12px;height:200px;overflow:auto;
+    font-family:'Consolas',monospace;font-size:10px;line-height:1.6;
+    color:#9d8aa8;white-space:pre-wrap;word-break:break-all;
+  }
+  .log .t{color:var(--pink)} .log .g{color:var(--ok)} .log .r{color:var(--err)}
+  .log .w{color:#ffcc00}
+  .log .b{color:#66ccff}
+  .log .id{color:#ff8800;font-weight:700}
+
+  .menu-activation{
+    display:flex;justify-content:center;margin:10px 0 18px 0;
+  }
+  .menu-btn{
+    padding:14px 48px;border:2px solid var(--ok);
+    background:linear-gradient(90deg,#00cc66,#00aa55);
+    color:#fff;font-weight:800;letter-spacing:4px;font-size:16px;cursor:pointer;
+    transition:.3s;clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    text-align:center;box-shadow:0 0 30px rgba(59,255,154,.3);
+  }
+  .menu-btn:hover{transform:scale(1.03);box-shadow:0 0 50px rgba(59,255,154,.5)}
+
+  .report-box{
+    border:1px solid var(--line);
+    background:linear-gradient(160deg,#10051a,#080310);
+    clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    padding:18px;
+    margin-bottom:18px;
+    max-height:300px;
+    overflow:auto;
+  }
+  .report-box h3{font-size:12px;letter-spacing:3px;color:var(--pink);margin-bottom:14px;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+  .report-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:8px 12px;background:#0a0410;border:1px solid rgba(255,31,143,.15);
+    margin-bottom:6px;font-size:11px;border-radius:4px;
+  }
+  .report-item .key{color:var(--pink);font-weight:700;font-size:12px}
+  .report-item .time{color:var(--muted);font-size:10px}
+  .report-item .timer{color:var(--ok);font-weight:700;font-size:12px;min-width:100px;text-align:right}
+  .report-item .expired{color:var(--err);font-weight:700}
+
+  .modal-overlay{
+    position:fixed;inset:0;z-index:50;
+    background:rgba(0,0,0,.8);
+    backdrop-filter:blur(6px);
+    display:none;align-items:center;justify-content:center;
+  }
+  .modal-overlay.show{display:flex}
+  .modal{
+    background:linear-gradient(160deg,#13071c,#0a0411);
+    border:1px solid var(--line);
+    padding:40px 36px;width:min(400px,90vw);
+    clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+    box-shadow:0 0 80px var(--pink-glow);
+    text-align:center;
+  }
+  .modal h2{color:var(--pink);letter-spacing:4px;font-size:18px;margin-bottom:10px}
+  .modal p{color:var(--muted);font-size:12px;margin-bottom:24px}
+  .modal-options{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+  .modal-btn{
+    padding:14px 36px;border:2px solid var(--pink);
+    background:transparent;color:var(--text);
+    font-weight:700;letter-spacing:2px;font-size:14px;cursor:pointer;
+    transition:.3s;clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    min-width:100px;
+  }
+  .modal-btn:hover{background:var(--pink-soft);box-shadow:0 0 30px var(--pink-glow)}
+  .modal-btn.max{border-color:#ff1f8f}
+  .modal-btn.original{border-color:#66ccff}
+  .modal-btn.original:hover{background:rgba(102,204,255,.15)}
+  .modal-close{
+    margin-top:16px;background:transparent;border:1px solid var(--muted);
+    color:var(--muted);padding:8px 24px;cursor:pointer;font-size:11px;
+    letter-spacing:2px;transition:.3s;
+  }
+  .modal-close:hover{color:#fff;border-color:#fff}
+
+  .loading-overlay{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(0,0,0,.92);
+    backdrop-filter:blur(10px);
+    display:none;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .loading-overlay.show{display:flex}
+  .loading-overlay .spinner{
+    width:80px;height:80px;border:4px solid var(--pink-soft);
+    border-top:4px solid var(--pink);
+    border-radius:50%;animation:spin 0.8s linear infinite;
+    margin-bottom:30px;
+  }
+  .loading-overlay .label{color:var(--pink);font-size:16px;letter-spacing:4px;font-weight:700;margin-bottom:10px}
+  .loading-overlay .version-label{color:var(--muted);font-size:12px;letter-spacing:2px;margin-bottom:20px}
+  .loading-overlay .progress-bar{
+    width:280px;height:6px;background:#1a1020;border-radius:4px;overflow:hidden;
+  }
+  .loading-overlay .progress-bar .fill{
+    height:100%;width:0%;background:linear-gradient(90deg,var(--pink),#ff66b2);
+    border-radius:4px;transition:width 0.15s ease;
+  }
+  .loading-overlay .percent{color:#fff;font-size:20px;font-weight:800;margin-top:12px;letter-spacing:2px}
+  .loading-overlay .status-text{color:var(--muted);font-size:11px;margin-top:6px}
+
+  .toast{
+    position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+    background:rgba(255,31,143,.9);color:#fff;padding:16px 32px;
+    font-weight:700;letter-spacing:2px;font-size:14px;
+    border-radius:8px;z-index:999;box-shadow:0 0 50px var(--pink-glow);
+    transition:opacity .5s;opacity:0;pointer-events:none;
+  }
+  .toast.show{opacity:1}
+
+  .update-banner{
+    display:none;
+    margin:10px 0 18px 0;
+    text-align:center;
+  }
+  .update-btn{
+    padding:14px 30px;
+    background:linear-gradient(90deg,#ff4444,#cc0000);
+    color:#fff;
+    font-weight:800;
+    font-size:16px;
+    border:none;
+    cursor:pointer;
+    border-radius:8px;
+    box-shadow:0 0 30px rgba(255,68,68,.5);
+    animation: pulse 1.5s infinite;
+    letter-spacing:2px;
+    width:100%;
+    max-width:400px;
+  }
+  .update-btn:hover{
+    transform:scale(1.02);
+    box-shadow:0 0 50px rgba(255,68,68,.7);
+  }
+  @keyframes pulse{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(1.02)}
+  }
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+
+<div class="card" id="loginCard">
+  <div class="logo-img">
+    <img src="https://i.ibb.co/j7RdJkv/1000080139-removebg-preview.png" alt="ERROR HUB LOGO" />
+  </div>
+  <div class="logo">
+    <h1>ERROR HUB PREMIUM</h1>
+    <small>v3.0 — PANEL</small>
+  </div>
+  <label for="key">CHAVE DE LICENÇA</label>
+  <div class="field"><input id="key" type="text" placeholder="DIGITE SUA CHAVE" autocomplete="off" /></div>
+  <button class="btn" id="enter">ENTRAR</button>
+  <div class="status" id="status">Aguardando licença</div>
+</div>
+
+<div class="panel" id="panel">
+  <div class="panel-wrap">
+    <div class="topbar">
+      <div class="brand">
+        <img class="brand-img" src="https://i.ibb.co/j7RdJkv/1000080139-removebg-preview.png" alt="ERROR HUB" />
+        <b>ERROR HUB PREMIUM</b>
+      </div>
+      <div class="user"><span class="dot"></span><span id="userDisplay">USER#0000</span></div>
+      <!-- КНОПКА SAIR УДАЛЕНА -->
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">STATUS</div><div class="v">ONLINE</div><div class="s">● ativo</div></div>
+      <div class="stat"><div class="k">PING</div><div class="v">8 ms</div><div class="s">estável</div></div>
+      <div class="stat"><div class="k">FPS</div><div class="v">240</div><div class="s">otimizado</div></div>
+      <div class="stat"><div class="k">VALIDADE</div><div class="v" id="validityDisplay">1 dia</div><div class="s" id="timeLeftDisplay">⏱️ 24h 00m 00s</div></div>
+    </div>
+
+    <div class="update-banner" id="updateBanner">
+      <button class="update-btn" id="updateBtn">🔴 ДОСТУПНО ОБНОВЛЕНИЕ! НАЖМИТЕ ДЛЯ ПЕРЕХОДА</button>
+    </div>
+
+    <div class="menu-activation">
+      <button class="menu-btn" id="menuActBtn">⚡ ATIVAÇÃO</button>
+    </div>
+
+    <div class="report-box" id="reportBox">
+      <h3>📊 RELATÓRIO DE ATIVAÇÕES</h3>
+      <div id="reportList"></div>
+    </div>
+
+    <div class="box">
+      <h3>MÓDULOS</h3>
+      <div class="mods" id="mods"></div>
+    </div>
+
+    <div class="box">
+      <h3>AIM FUNCTIONS</h3>
+      <div class="aim-grid" id="aimGrid"></div>
+    </div>
+
+    <div class="box" style="margin-bottom:0">
+      <h3>CONSOLE <span style="font-size:9px;color:var(--muted);font-weight:normal;">(streaming)</span></h3>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>🔐 ESCOLHA A VERSÃO</h2>
+    <p>Selecione a versão do Free Fire</p>
+    <div class="modal-options">
+      <button class="modal-btn max" id="modalMax">🔴 FF max</button>
+      <button class="modal-btn original" id="modalOriginal">🔵 FF original</button>
+    </div>
+    <button class="modal-close" id="modalClose">✕ CANCELAR</button>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="label">CARREGANDO</div>
+  <div class="version-label" id="loadVersion">FF max</div>
+  <div class="progress-bar"><div class="fill" id="loadFill"></div></div>
+  <div class="percent" id="loadPercent">0%</div>
+  <div class="status-text" id="loadStatus">Injetando ERROR HUB...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// FINGERPRINT
+// ============================================================
+function getFingerprint() {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'top';
+  ctx.font = '14px Arial';
+  ctx.fillText('fp', 2, 2);
+  const data = canvas.toDataURL() + navigator.userAgent + screen.width + screen.height + navigator.language;
+  return btoa(data).substring(0, 50);
+}
+
+const DEVICE_FINGERPRINT = getFingerprint();
+
+// ============================================================
+// ЗАПРОСЫ К СЕРВЕРУ
+// ============================================================
+async function checkKeyOnServer(key) {
+  const res = await fetch('/api/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key })
+  });
+  return await res.json();
+}
+
+async function activateKeyOnServer(key, fingerprint) {
+  const res = await fetch('/api/activate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, fingerprint })
+  });
+  return await res.json();
+}
+
+async function getKeyStatusOnServer(key) {
+  const res = await fetch('/api/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key })
+  });
+  return await res.json();
+}
+
+// ============================================================
+// ПРОВЕРКА ОБНОВЛЕНИЙ
+// ============================================================
+async function checkUpdate() {
+  try {
+    const res = await fetch('/api/config');
+    const config = await res.json();
+    document.getElementById('updateBanner').style.display = config.updateMode ? 'block' : 'none';
+  } catch (e) {}
+}
+document.getElementById('updateBtn').addEventListener('click', () => {
+  window.location.href = 'https://t.me/Shtormhackker';
+});
+setInterval(checkUpdate, 10000);
+
+// ============================================================
+// ТАЙМЕР 10 СЕКУНД (только если нет сохранённой сессии)
+// ============================================================
+let countdownTimer = null;
+let countdownValue = 10;
+let countdownActive = false;
+
+function startCountdown() {
+  if (countdownActive) return;
+  countdownActive = true;
+  countdownValue = 10;
+  countdownTimer = setInterval(() => {
+    countdownValue--;
+    if (countdownValue <= 0) {
+      clearInterval(countdownTimer);
+      countdownActive = false;
+      window.location.href = 'https://t.me/Shtormhackker';
+    }
+  }, 1000);
+}
+
+function resetCountdown() {
+  clearInterval(countdownTimer);
+  countdownActive = false;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  checkUpdate();
+  // Проверяем, есть ли сохранённый ключ
+  const savedKey = localStorage.getItem('errorHubActiveKey');
+  if (savedKey) {
+    // Пытаемся войти автоматически
+    autoLogin(savedKey);
+  } else {
+    startCountdown();
+  }
+});
+
+document.getElementById('key').addEventListener('input', resetCountdown);
+document.getElementById('enter').addEventListener('click', resetCountdown);
+
+// ============================================================
+// АВТОВХОД
+// ============================================================
+async function autoLogin(key) {
+  try {
+    const checkResult = await checkKeyOnServer(key);
+    if (checkResult.valid && checkResult.used && checkResult.fingerprint === DEVICE_FINGERPRINT) {
+      const statusResult = await getKeyStatusOnServer(key);
+      if (statusResult.valid && statusResult.activatedAt) {
+        const elapsed = Date.now() - statusResult.activatedAt;
+        if (elapsed > 24 * 60 * 60 * 1000) {
+          // Ключ истёк — удаляем сохранение и показываем экран ввода
+          localStorage.removeItem('errorHubActiveKey');
+          document.getElementById('loginCard').style.display = 'block';
+          document.getElementById('panel').classList.remove('active');
+          document.getElementById('status').textContent = '⏰ Chave expirada (24h)';
+          document.getElementById('status').className = 'status err';
+          startCountdown();
+          return;
+        }
+        // Автовход
+        currentUserKey = key;
+        document.getElementById('loginCard').style.display = 'none';
+        document.getElementById('panel').classList.add('active');
+        document.getElementById('userDisplay').textContent = 'USER#' + key.substring(0, 4) + '...';
+        initPanel();
+        startSessionTimer(key);
+        speakRussian('Панель ERROR HUB загружена');
+        return;
+      }
+    }
+    // Если что-то пошло не так — показываем экран ввода
+    localStorage.removeItem('errorHubActiveKey');
+    document.getElementById('loginCard').style.display = 'block';
+    startCountdown();
+  } catch (e) {
+    localStorage.removeItem('errorHubActiveKey');
+    document.getElementById('loginCard').style.display = 'block';
+    startCountdown();
+  }
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+const status = document.getElementById('status');
+const card = document.getElementById('loginCard');
+const panel = document.getElementById('panel');
+const userDisplay = document.getElementById('userDisplay');
+const validityDisplay = document.getElementById('validityDisplay');
+const timeLeftDisplay = document.getElementById('timeLeftDisplay');
+
+let currentUserKey = '0000';
+let sessionTimer = null;
+
+function speakRussian(text) {
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ru-RU';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+window.addEventListener('load', () => {
+  setTimeout(() => speakRussian('Добро пожаловать в ERROR HUB PREMIUM.'), 800);
+});
+
+document.getElementById('enter').addEventListener('click', login);
+document.getElementById('key').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+function redirectToChannel() {
+  window.location.href = 'https://t.me/Shtormhackker';
+}
+
+async function login() {
+  const k = document.getElementById('key').value.trim();
+  resetCountdown();
+  
+  if (k === '') {
+    status.className = 'status err';
+    status.textContent = 'Compre a chave, se você tiver, insira-a';
+    speakRussian('Купите ключ, если он у вас есть, вставьте его');
+    setTimeout(redirectToChannel, 1500);
+    return;
+  }
+  
+  status.className = 'status';
+  status.textContent = 'Verificando no servidor...';
+  speakRussian('Проверка ключа на сервере...');
+  
+  try {
+    const checkResult = await checkKeyOnServer(k);
+    
+    if (!checkResult.valid) {
+      status.className = 'status err';
+      status.textContent = 'Chave inválida';
+      speakRussian('Нужно купить ключ');
+      setTimeout(redirectToChannel, 1500);
+      return;
+    }
+    
+    if (checkResult.used && checkResult.fingerprint !== DEVICE_FINGERPRINT) {
+      status.className = 'status err';
+      status.textContent = '🔒 Chave ativa em outro dispositivo';
+      speakRussian('Этот ключ уже активирован на другом устройстве');
+      setTimeout(redirectToChannel, 1500);
+      return;
+    }
+    
+    if (checkResult.used && checkResult.fingerprint === DEVICE_FINGERPRINT) {
+      const statusResult = await getKeyStatusOnServer(k);
+      if (statusResult.valid && statusResult.activatedAt) {
+        const elapsed = Date.now() - statusResult.activatedAt;
+        if (elapsed > 24 * 60 * 60 * 1000) {
+          status.className = 'status err';
+          status.textContent = '⏰ Chave expirada (24h)';
+          speakRussian('Ключ истек. Купите новый.');
+          setTimeout(redirectToChannel, 1500);
+          return;
+        }
+      }
+      
+      currentUserKey = k;
+      localStorage.setItem('errorHubActiveKey', k);
+      status.className = 'status ok';
+      status.textContent = 'Licença válida! Acessando...';
+      speakRussian('Лицензия действительна. Вход в панель.');
+      setTimeout(() => {
+        card.style.display = 'none';
+        panel.classList.add('active');
+        userDisplay.textContent = 'USER#' + k.substring(0, 4) + '...';
+        initPanel();
+        startSessionTimer(k);
+        speakRussian('Панель ERROR HUB загружена');
+      }, 700);
+      return;
+    }
+    
+    if (!checkResult.used) {
+      status.className = 'status';
+      status.textContent = 'Ativando...';
+      speakRussian('Активация ключа...');
+      
+      const activateResult = await activateKeyOnServer(k, DEVICE_FINGERPRINT);
+      
+      if (!activateResult.success) {
+        status.className = 'status err';
+        status.textContent = 'Erro ao ativar';
+        speakRussian('Ошибка активации');
+        setTimeout(redirectToChannel, 1500);
+        return;
+      }
+      
+      currentUserKey = k;
+      localStorage.setItem('errorHubActiveKey', k);
+      status.className = 'status ok';
+      status.textContent = '✅ Ativado! Acessando...';
+      speakRussian('Ключ активирован. Вход в панель.');
+      setTimeout(() => {
+        card.style.display = 'none';
+        panel.classList.add('active');
+        userDisplay.textContent = 'USER#' + k.substring(0, 4) + '...';
+        renderReport();
+        initPanel();
+        startSessionTimer(k);
+        speakRussian('Панель ERROR HUB загружена');
+      }, 700);
+    }
+  } catch (e) {
+    status.className = 'status err';
+    status.textContent = 'Erro de conexão';
+    speakRussian('Ошибка подключения к серверу');
+  }
+}
+
+function updateTimeLeft() {
+  if (currentUserKey !== '0000') {
+    getKeyStatusOnServer(currentUserKey).then(statusResult => {
+      if (statusResult.valid && statusResult.activatedAt) {
+        const elapsed = Date.now() - statusResult.activatedAt;
+        const remaining = 24 * 60 * 60 * 1000 - elapsed;
+        if (remaining <= 0) {
+          timeLeftDisplay.textContent = '⏰ EXPIRADO';
+          timeLeftDisplay.style.color = 'var(--err)';
+          validityDisplay.textContent = 'Expirado';
+          // Автоматический выход при истечении времени
+          setTimeout(() => {
+            localStorage.removeItem('errorHubActiveKey');
+            panel.classList.remove('active');
+            card.style.display = 'block';
+            status.textContent = '⏰ Chave expirada (24h)';
+            status.className = 'status err';
+            startCountdown();
+          }, 3000);
+        } else {
+          const totalSec = Math.floor(remaining / 1000);
+          const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+          const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+          const s = String(totalSec % 60).padStart(2, '0');
+          timeLeftDisplay.textContent = `⏱️ ${h}h ${m}m ${s}s`;
+          timeLeftDisplay.style.color = 'var(--ok)';
+          validityDisplay.textContent = '1 dia';
+        }
+      }
+    });
+  }
+}
+
+function startSessionTimer(key) {
+  if (sessionTimer) clearInterval(sessionTimer);
+  sessionTimer = setInterval(updateTimeLeft, 1000);
+}
+
+// ============================================================
+// ATIVAÇÃO
+// ============================================================
+document.getElementById('menuActBtn').addEventListener('click', () => {
+  document.getElementById('modal').classList.add('show');
+  speakRussian('Выберите версию Free Fire: max или оригинал.');
+});
+
+function startLoading(version) {
+  document.getElementById('modal').classList.remove('show');
+  const label = version === 'max' ? 'FF max' : 'FF original';
+  const speakLabel = version === 'max' ? 'Free Fire Max' : 'Free Fire оригинал';
+  document.getElementById('loadVersion').textContent = label;
+  document.getElementById('loadFill').style.width = '0%';
+  document.getElementById('loadPercent').textContent = '0%';
+  document.getElementById('loadStatus').textContent = 'Injetando ERROR HUB...';
+  document.getElementById('loading').classList.add('show');
+  
+  speakRussian(`Инжектирование ERROR HUB Premium в ${speakLabel}.`);
+  
+  let progress = 0;
+  const steps = [
+    { at: 10, text: 'Verificando licença...', speak: 'Проверка лицензии.' },
+    { at: 25, text: 'Conectando ao servidor...', speak: 'Подключение к серверу.' },
+    { at: 40, text: 'Injetando ERROR HUB...', speak: 'Инжектирование ERROR HUB.' },
+    { at: 55, text: 'Configurando módulos...', speak: 'Настройка модулей.' },
+    { at: 70, text: 'Aplicando patches...', speak: 'Применение патчей.' },
+    { at: 85, text: 'Finalizando...', speak: 'Завершение.' },
+    { at: 95, text: 'Pronto para abrir!', speak: 'Готово к открытию игры.' }
+  ];
+  
+  let lastSpoken = 0;
+  const interval = setInterval(() => {
+    progress += Math.random() * 3 + 1;
+    if (progress > 100) progress = 100;
+    
+    document.getElementById('loadFill').style.width = progress + '%';
+    document.getElementById('loadPercent').textContent = Math.round(progress) + '%';
+    
+    for (const s of steps) {
+      if (progress >= s.at && lastSpoken < s.at) {
+        document.getElementById('loadStatus').textContent = s.text;
+        if (s.speak) speakRussian(s.speak);
+        lastSpoken = s.at;
+      }
+    }
+    
+    if (progress >= 100) {
+      clearInterval(interval);
+      document.getElementById('loadStatus').textContent = '✅ Abrindo ' + label + '...';
+      speakRussian(`Открытие ${speakLabel}. Удачи!`);
+      setTimeout(() => {
+        document.getElementById('loading').classList.remove('show');
+        if (version === 'max') {
+          window.location.href = 'freefiremax://';
+        } else {
+          window.location.href = 'freefireth://';
+        }
+      }, 600);
+    }
+  }, 80 + Math.random() * 40);
+}
+
+document.getElementById('modalMax').addEventListener('click', () => startLoading('max'));
+document.getElementById('modalOriginal').addEventListener('click', () => startLoading('original'));
+document.getElementById('modalClose').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('show');
+});
+document.getElementById('modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('show');
+  }
+});
+
+// ============================================================
+// МОДУЛИ И AIM
+// ============================================================
+const MODULES = ['AIMBOT', 'MACRO', 'AIM ASSIST', 'AIM LOCK', 'AIM NEK', 'AIM DRAG', 'AIM STAB', 'AIM SENSI'];
+const AIM_FUNCS = [
+  { id: 'aimbot', label: 'AIMBOT', desc: 'Lock no alvo', min: 0, max: 100, val: 85 },
+  { id: 'macro', label: 'MACRO', desc: 'Precisão do macro', min: 0, max: 100, val: 70 },
+  { id: 'assist', label: 'AIM ASSIST', desc: 'Suavidade da assistência', min: 0, max: 100, val: 60 },
+  { id: 'lock', label: 'AIM LOCK', desc: 'Travamento automático', min: 0, max: 100, val: 90 },
+  { id: 'nek', label: 'AIM NEK', desc: 'Compensação de movimento', min: 0, max: 100, val: 50 },
+  { id: 'drag', label: 'AIM DRAG', desc: 'Arraste suave', min: 0, max: 100, val: 40 },
+  { id: 'stab', label: 'AIM STAB', desc: 'Estabilização de mira', min: 0, max: 100, val: 75 },
+  { id: 'sensi', label: 'AIM SENSI', desc: 'Sensibilidade geral', min: 0, max: 100, val: 55 }
+];
+
+let aimStates = {};
+let aimSliders = {};
+let logInterval = {};
+let activeLogs = {};
+
+function generateAimCode(funcId, value) {
+  const intensity = value / 100;
+  const codes = {
+    aimbot: `[LOCK] Target: PLAYER_${Math.floor(Math.random()*9999)} | FOV: ${Math.round(30+intensity*70)}° | RCS: ${Math.round(intensity*100)}% | Smooth: ${Math.round(100-intensity*80)} | Lead: ${Math.round(intensity*3.2)}ms`,
+    macro: `[BURST] Pattern: ${['AK','M4','MP5'][Math.floor(Math.random()*3)]} | Delay: ${Math.round(120-intensity*90)}ms | Recoil: ${Math.round(intensity*70)}% | Jitter: ${Math.round(intensity*15)}px`,
+    assist: `[ASSIST] Stickiness: ${Math.round(intensity*50)}% | Magnetism: ${Math.round(80+intensity*120)}px | Smooth: ${Math.round(100-intensity*60)}% | Humanization: ${Math.round(60+intensity*30)}%`,
+    lock: `[LOCK-ON] Time: ${Math.round(400-intensity*350)}ms | Hold: ${Math.round(800+intensity*1200)}ms | Priority: ${['distance','health','threat'][Math.floor(Math.random()*3)]} | Auto: ${intensity>0.6?'YES':'NO'}`,
+    nek: `[NEK] Prediction: ${Math.round(intensity*40)}% | Velocity: ${Math.round(50+intensity*45)}% | Lead: ${Math.round(20+intensity*80)}ms | Algorithm: v${(intensity*2+1).toFixed(1)}`,
+    drag: `[DRAG] Coefficient: ${(intensity*0.7+0.3).toFixed(2)} | Inertia: ${Math.round(100-intensity*70)}% | Damping: ${Math.round(20+intensity*70)}% | Curve: ${['linear','exponential','log'][Math.floor(Math.random()*3)]}`,
+    stab: `[STAB] Horizontal: ${Math.round(40+intensity*55)}% | Vertical: ${Math.round(40+intensity*55)}% | Vibration: ${Math.round(intensity*70)}% | Mode: ${['standard','aggressive','precision'][Math.floor(Math.random()*3)]}`,
+    sensi: `[SENSI] Base: ${(intensity*3+0.5).toFixed(2)}x | ADS: ${(intensity*1.5+0.3).toFixed(2)}x | Yaw: ${Math.round(40+intensity*160)}°/s | DPI: ${Math.round(400+intensity*1600)}`
+  };
+  return codes[funcId] || `[${funcId.toUpperCase()}] ACTIVE | ${value}%`;
+}
+
+function startLogStream(funcId, label, value) {
+  if (!activeLogs[funcId]) {
+    activeLogs[funcId] = true;
+    const log = document.getElementById('log');
+    const stream = setInterval(() => {
+      if (!activeLogs[funcId]) { clearInterval(stream); return; }
+      const entry = document.createElement('div');
+      entry.innerHTML = `<span class="t">[${funcId.toUpperCase()}]</span> ${generateAimCode(funcId, value)}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+      if (log.children.length > 500) log.removeChild(log.children[0]);
+    }, 150 + Math.random() * 100);
+    logInterval[funcId] = stream;
+  }
+}
+
+function stopLogStream(funcId) {
+  if (activeLogs[funcId]) {
+    activeLogs[funcId] = false;
+    if (logInterval[funcId]) { clearInterval(logInterval[funcId]); delete logInterval[funcId]; }
+  }
+}
+
+function renderReport() {
+  const list = document.getElementById('reportList');
+  list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:12px;font-size:12px;">Nenhuma ativação registrada</div>';
+}
+
+function initPanel() {
+  const mods = document.getElementById('mods');
+  mods.innerHTML = '';
+  MODULES.forEach(mod => {
+    const el = document.createElement('div');
+    el.className = 'mod';
+    el.innerHTML = `<span>${mod}</span><div class="switch" data-mod="${mod}"></div>`;
+    const sw = el.querySelector('.switch');
+    sw.addEventListener('click', () => {
+      sw.classList.toggle('on');
+      const isOn = sw.classList.contains('on');
+      const id = mod.toLowerCase().replace(/\s/g, '');
+      if (isOn) startLogStream(id, mod, 50);
+      else stopLogStream(id);
+    });
+    mods.appendChild(el);
+  });
+
+  const grid = document.getElementById('aimGrid');
+  grid.innerHTML = '';
+  AIM_FUNCS.forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'aim-item';
+    div.innerHTML = `
+      <label>${f.label} <span class="val" id="val_${f.id}">${f.val}%</span></label>
+      <input type="range" min="${f.min}" max="${f.max}" value="${f.val}" id="slider_${f.id}" disabled>
+      <div class="desc">${f.desc}</div>
+    `;
+    const slider = div.querySelector(`#slider_${f.id}`);
+    const valSpan = div.querySelector(`#val_${f.id}`);
+    aimSliders[f.id] = slider;
+    slider.addEventListener('input', () => {
+      const v = parseInt(slider.value);
+      valSpan.textContent = v + '%';
+    });
+    grid.appendChild(div);
+  });
+
+  const log = document.getElementById('log');
+  log.innerHTML = '';
+  const entry = document.createElement('div');
+  entry.innerHTML = `<span class="t">[sys]</span> conexão estabelecida`;
+  log.appendChild(entry);
+}
+
+// ============================================================
+// PARTÍCULAS
+// ============================================================
+const cvs = document.getElementById('particles'), ctx = cvs.getContext('2d');
+let W, H, parts = [];
+function resize() { W = cvs.width = innerWidth; H = cvs.height = innerHeight; }
+resize();
+addEventListener('resize', resize);
+for (let i = 0; i < 110; i++) parts.push({
+  x: Math.random() * W, y: Math.random() * H,
+  vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4,
+  r: Math.random() * 1.6 + .4
+});
+function tick() {
+  ctx.clearRect(0, 0, W, H);
+  for (const p of parts) {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > W) p.vx *= -1;
+    if (p.y < 0 || p.y > H) p.vy *= -1;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,31,143,.7)';
+    ctx.fill();
+  }
+  for (let i = 0; i < parts.length; i++) {
+    for (let j = i + 1; j < parts.length; j++) {
+      const a = parts[i], b = parts[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 120) {
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = 'rgba(255,31,143,' + (1 - d / 120) * .25 + ')';
+        ctx.lineWidth = .6;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+</body>
+</html>
