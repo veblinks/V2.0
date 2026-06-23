@@ -2,8 +2,12 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>ERROR HUB PREMIUM</title>
+
+<!-- ====== PWA MANIFEST ====== -->
+<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkVSUk9SIEhVQiBQUkVNSVVNIiwKICAic2hvcnRfbmFtZSI6ICJFUlJPUiBIVUIiLAogICJkZXNjcmlwdGlvbiI6ICJQYW5lbCBkZSBjb250cm9sZSBwcmVtaXVtIiwKICAic3RhcnRfdXJsIjogIi4vIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMGEwNDExIiwKICAidGhlbWVfY29sb3IiOiAiI2ZmMWY4ZiIsCiAgImljb25zIjogWwogICAgewogICAgICAic3JjIjogImh0dHBzOi8vaS5pYmIuY28vajdSZEprdi8xMDAwMDgwMTM5LXJlbW92ZWJnLXByZXZpZXcucG5nIiwKICAgICAgInNpemVzIjogIjUxMng1MTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciLAogICAgICAicHVycG9zZSI6ICJhbnkgbWFzayBhbnlsYW5nIgogICAgfQogIF0KfQ==" />
+
 <style>
   :root{
     --pink:#ff1f8f; --pink-glow:rgba(255,31,143,.55); --pink-soft:rgba(255,31,143,.15);
@@ -271,10 +275,102 @@
     0%,100%{transform:scale(1)}
     50%{transform:scale(1.02)}
   }
+
+  /* ====== PWA INSTALL BANNER ====== */
+  .install-banner{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:9999;
+    background:linear-gradient(135deg,#13071c,#0a0411);
+    border-bottom:2px solid var(--pink);
+    padding:16px 20px;
+    box-shadow:0 0 40px var(--pink-glow);
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    animation: slideDown 0.5s ease;
+  }
+  .install-banner.show{display:flex}
+  @keyframes slideDown{
+    from{transform:translateY(-100%);opacity:0}
+    to{transform:translateY(0);opacity:1}
+  }
+  .install-banner .left{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .install-banner .icon{
+    width:48px;
+    height:48px;
+    border-radius:12px;
+    object-fit:contain;
+    background:#0a0411;
+    padding:4px;
+    border:1px solid var(--line);
+  }
+  .install-banner .info{
+    display:flex;
+    flex-direction:column;
+  }
+  .install-banner .info .title{
+    font-weight:700;
+    font-size:16px;
+    color:#fff;
+    letter-spacing:1px;
+  }
+  .install-banner .info .desc{
+    font-size:11px;
+    color:var(--muted);
+  }
+  .install-banner .install-btn{
+    padding:10px 24px;
+    background:linear-gradient(90deg,var(--pink),#c70d6e);
+    color:#fff;
+    font-weight:700;
+    font-size:14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    letter-spacing:1px;
+    box-shadow:0 0 20px var(--pink-glow);
+    transition:.3s;
+    white-space:nowrap;
+  }
+  .install-banner .install-btn:hover{
+    transform:scale(1.05);
+    box-shadow:0 0 30px var(--pink-glow);
+  }
+  .install-banner .close-btn{
+    background:transparent;
+    border:none;
+    color:var(--muted);
+    font-size:20px;
+    cursor:pointer;
+    padding:4px 8px;
+    transition:.3s;
+  }
+  .install-banner .close-btn:hover{color:#fff}
 </style>
 </head>
 <body>
 <canvas id="particles"></canvas>
+
+<!-- ====== PWA INSTALL BANNER ====== -->
+<div class="install-banner" id="installBanner">
+  <div class="left">
+    <img class="icon" src="https://i.ibb.co/j7RdJkv/1000080139-removebg-preview.png" alt="ERROR HUB" />
+    <div class="info">
+      <span class="title">🚀 ERROR HUB</span>
+      <span class="desc">Установите приложение для быстрого доступа</span>
+    </div>
+  </div>
+  <button class="install-btn" id="installBtn">📲 УСТАНОВИТЬ</button>
+  <button class="close-btn" id="closeInstallBanner">✕</button>
+</div>
 
 <div class="card" id="loginCard">
   <div class="logo-img">
@@ -359,8 +455,48 @@
 
 <script>
 // ============================================================
-// FINGERPRINT - УНИКАЛЬНЫЙ ID УСТРОЙСТВА
+// PWA INSTALL
 // ============================================================
+let deferredPrompt = null;
+const installBanner = document.getElementById('installBanner');
+const closeInstallBtn = document.getElementById('closeInstallBanner');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBanner.classList.add('show');
+});
+
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+      installBanner.classList.remove('show');
+      showToast('✅ Приложение установлено!');
+    } else {
+      showToast('❌ Установка отменена');
+    }
+    deferredPrompt = null;
+  } else {
+    showToast('📲 Откройте в браузере и нажмите "Установить"');
+  }
+});
+
+closeInstallBtn.addEventListener('click', () => {
+  installBanner.classList.remove('show');
+});
+
+// Показываем баннер если PWA уже установлено
+window.addEventListener('appinstalled', () => {
+  installBanner.classList.remove('show');
+  showToast('✅ ERROR HUB установлен!');
+});
+
+// ============================================================
+// ОСТАЛЬНОЙ КОД (FINGERPRINT, API, LOGIN, MODULES и т.д.)
+// ============================================================
+
 function getFingerprint() {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -373,35 +509,33 @@ function getFingerprint() {
 
 const DEVICE_FINGERPRINT = getFingerprint();
 
-// ============================================================
-// ВСЕ ЗАПРОСЫ ТОЛЬКО К СЕРВЕРУ! НИКАКОЙ ЛОКАЛЬНОЙ ПРОВЕРКИ!
-// ============================================================
-const SERVER_URL = ''; // пусто = текущий сервер
-
-async function apiCall(endpoint, data) {
-  const res = await fetch(endpoint, {
+async function checkKeyOnServer(key) {
+  const res = await fetch('/api/check', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify({ key })
   });
   return await res.json();
 }
 
-async function checkKeyOnServer(key) {
-  return await apiCall('/api/check', { key });
-}
-
 async function activateKeyOnServer(key, fingerprint) {
-  return await apiCall('/api/activate', { key, fingerprint });
+  const res = await fetch('/api/activate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, fingerprint })
+  });
+  return await res.json();
 }
 
 async function getKeyStatusOnServer(key) {
-  return await apiCall('/api/status', { key });
+  const res = await fetch('/api/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key })
+  });
+  return await res.json();
 }
 
-// ============================================================
-// ПРОВЕРКА ОБНОВЛЕНИЙ
-// ============================================================
 async function checkUpdate() {
   try {
     const res = await fetch('/api/config');
@@ -414,9 +548,6 @@ document.getElementById('updateBtn').addEventListener('click', () => {
 });
 setInterval(checkUpdate, 10000);
 
-// ============================================================
-// ТАЙМЕР 10 СЕКУНД
-// ============================================================
 let countdownTimer = null;
 let countdownValue = 10;
 let countdownActive = false;
@@ -453,9 +584,6 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('key').addEventListener('input', resetCountdown);
 document.getElementById('enter').addEventListener('click', resetCountdown);
 
-// ============================================================
-// АВТОВХОД
-// ============================================================
 async function autoLogin(key) {
   try {
     const checkResult = await checkKeyOnServer(key);
@@ -492,9 +620,6 @@ async function autoLogin(key) {
   }
 }
 
-// ============================================================
-// LOGIN - ТОЛЬКО СЕРВЕР!
-// ============================================================
 const status = document.getElementById('status');
 const card = document.getElementById('loginCard');
 const panel = document.getElementById('panel');
@@ -544,10 +669,8 @@ async function login() {
   speakRussian('Проверка ключа на сервере...');
   
   try {
-    // ✅ ТОЛЬКО СЕРВЕР!
     const checkResult = await checkKeyOnServer(k);
     
-    // Ключа нет в базе
     if (!checkResult.valid) {
       status.className = 'status err';
       status.textContent = 'Chave inválida';
@@ -556,7 +679,6 @@ async function login() {
       return;
     }
     
-    // Ключ уже используется на ДРУГОМ устройстве
     if (checkResult.used && checkResult.fingerprint !== DEVICE_FINGERPRINT) {
       status.className = 'status err';
       status.textContent = '🔒 Chave ativa em outro dispositivo';
@@ -565,7 +687,6 @@ async function login() {
       return;
     }
     
-    // Ключ уже активирован на ЭТОМ устройстве
     if (checkResult.used && checkResult.fingerprint === DEVICE_FINGERPRINT) {
       const statusResult = await getKeyStatusOnServer(k);
       if (statusResult.valid && statusResult.activatedAt) {
@@ -595,7 +716,6 @@ async function login() {
       return;
     }
     
-    // ✅ НОВАЯ АКТИВАЦИЯ (ключ ещё не использовался)
     if (!checkResult.used) {
       status.className = 'status';
       status.textContent = 'Ativando...';
@@ -669,9 +789,6 @@ function startSessionTimer(key) {
   sessionTimer = setInterval(updateTimeLeft, 1000);
 }
 
-// ============================================================
-// ATIVAÇÃO
-// ============================================================
 document.getElementById('menuActBtn').addEventListener('click', () => {
   document.getElementById('modal').classList.add('show');
   speakRussian('Выберите версию Free Fire: max или оригинал.');
@@ -744,7 +861,7 @@ document.getElementById('modal').addEventListener('click', (e) => {
 });
 
 // ============================================================
-// МОДУЛИ И AIM
+// MODULES & AIM
 // ============================================================
 const MODULES = [
   { id: 'aimbot', label: 'AIMBOT' },
@@ -884,8 +1001,16 @@ function initPanel() {
   }, 500);
 }
 
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
 // ============================================================
-// PARTÍCULAS
+// PARTICLES
 // ============================================================
 const cvs = document.getElementById('particles'), ctx = cvs.getContext('2d');
 let W, H, parts = [];
