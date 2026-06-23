@@ -6,9 +6,29 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(__dirname));
 
 const DB_FILE = 'keys.json';
+const CONFIG_FILE = 'config.json';
+
+// ========== КОНФИГ ==========
+function loadConfig() {
+  if (!fs.existsSync(CONFIG_FILE)) {
+    const defaultConfig = {
+      updateMode: false,      // false - кнопка скрыта, true - показать
+      updateMessage: '🔴 Доступно обновление! Нажмите для перехода',
+      updateUrl: 'https://t.me/Shtormhackker',
+      lastUpdate: new Date().toISOString()
+    };
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
+    return defaultConfig;
+  }
+  return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+}
+
+function saveConfig(config) {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
 
 // ========== ВСЕ 1000 КЛЮЧЕЙ ==========
 const ALL_KEYS = [
@@ -84,7 +104,7 @@ const ALL_KEYS = [
 29635741,83417269,75932684,15876932,42395176,91254837,57814623,63197485,84261937,30528694
 ];
 
-// ========== БАЗА ДАННЫХ ==========
+// ========== ИНИЦИАЛИЗАЦИЯ БД ==========
 function initDB() {
   if (!fs.existsSync(DB_FILE)) {
     const db = {};
@@ -92,6 +112,7 @@ function initDB() {
       db[k] = { used: false, fingerprint: null, activatedAt: null };
     });
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    console.log('📁 Создана новая база keys.json');
   }
   return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 }
@@ -101,6 +122,8 @@ function saveDB(db) {
 }
 
 // ========== API ==========
+
+// Проверка ключа
 app.post('/api/check', (req, res) => {
   const { key } = req.body;
   const db = initDB();
@@ -111,6 +134,7 @@ app.post('/api/check', (req, res) => {
   }
 });
 
+// Активация ключа
 app.post('/api/activate', (req, res) => {
   const { key, fingerprint } = req.body;
   const db = initDB();
@@ -134,6 +158,7 @@ app.post('/api/activate', (req, res) => {
   res.json({ success: true, message: 'Chave ativada com sucesso!' });
 });
 
+// Получить статус ключа
 app.post('/api/status', (req, res) => {
   const { key } = req.body;
   const db = initDB();
@@ -149,6 +174,33 @@ app.post('/api/status', (req, res) => {
   }
 });
 
+// ========== API УПРАВЛЕНИЯ ОБНОВЛЕНИЯМИ ==========
+
+// Получить конфиг (для HTML)
+app.get('/api/config', (req, res) => {
+  const config = loadConfig();
+  res.json(config);
+});
+
+// Включить режим обновления (админка)
+app.post('/api/update/on', (req, res) => {
+  const config = loadConfig();
+  config.updateMode = true;
+  config.lastUpdate = new Date().toISOString();
+  saveConfig(config);
+  res.json({ success: true, message: 'Режим обновления включён', config });
+});
+
+// Выключить режим обновления (админка)
+app.post('/api/update/off', (req, res) => {
+  const config = loadConfig();
+  config.updateMode = false;
+  config.lastUpdate = new Date().toISOString();
+  saveConfig(config);
+  res.json({ success: true, message: 'Режим обновления выключён', config });
+});
+
+// Статистика
 app.get('/api/stats', (req, res) => {
   const db = initDB();
   const stats = {
@@ -159,9 +211,11 @@ app.get('/api/stats', (req, res) => {
   res.json(stats);
 });
 
-app.listen(3000, '0.0.0.0', () => {
-  console.log('✅ Servidor rodando na porta 3000');
+// ========== ЗАПУСК ==========
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Servidor rodando na porta ${PORT}`);
   const db = initDB();
-  console.log('📊 Total de chaves:', Object.keys(db).length);
-  console.log('🔑 Chaves usadas:', Object.values(db).filter(k => k.used).length);
+  console.log(`📊 Total de chaves: ${Object.keys(db).length}`);
+  console.log(`🔑 Chaves usadas: ${Object.values(db).filter(k => k.used).length}`);
 });
