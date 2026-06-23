@@ -4,33 +4,17 @@ const path = require('path');
 const cors = require('cors');
 const app = express();
 
+// ====== НАСТРОЙКИ ======
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 
-const DB_FILE = 'keys.json';
-const CONFIG_FILE = 'config.json';
+// ====== ФАЙЛЫ ======
+const DB_FILE = path.join(__dirname, 'keys.json');
+const CONFIG_FILE = path.join(__dirname, 'config.json');
+const LOG_FILE = path.join(__dirname, 'logs.txt');
 
-// ========== КОНФИГ ==========
-function loadConfig() {
-  if (!fs.existsSync(CONFIG_FILE)) {
-    const defaultConfig = {
-      updateMode: false,      // false - кнопка скрыта, true - показать
-      updateMessage: '🔴 Доступно обновление! Нажмите для перехода',
-      updateUrl: 'https://t.me/Shtormhackker',
-      lastUpdate: new Date().toISOString()
-    };
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
-    return defaultConfig;
-  }
-  return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-}
-
-function saveConfig(config) {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
-}
-
-// ========== ВСЕ 1000 КЛЮЧЕЙ ==========
+// ====== ВСЕ 1000 КЛЮЧЕЙ ======
 const ALL_KEYS = [
 30487192,57124983,68201357,49058621,85743209,13976842,72631598,54892076,21345789,96018324,
 87532014,43210978,69824531,50789623,18457302,32961875,75640219,24198763,80365471,59723146,
@@ -104,118 +88,259 @@ const ALL_KEYS = [
 29635741,83417269,75932684,15876932,42395176,91254837,57814623,63197485,84261937,30528694
 ];
 
-// ========== ИНИЦИАЛИЗАЦИЯ БД ==========
+// ====== ЛОГГЕР ======
+function logToFile(message) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}\n`;
+  fs.appendFileSync(LOG_FILE, logMessage, 'utf8');
+  console.log(logMessage.trim());
+}
+
+// ====== БАЗА ДАННЫХ ======
 function initDB() {
-  if (!fs.existsSync(DB_FILE)) {
-    const db = {};
-    ALL_KEYS.forEach(k => {
-      db[k] = { used: false, fingerprint: null, activatedAt: null };
-    });
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-    console.log('📁 Создана новая база keys.json');
+  try {
+    if (!fs.existsSync(DB_FILE)) {
+      const db = {};
+      ALL_KEYS.forEach(k => {
+        db[k] = { 
+          used: false, 
+          fingerprint: null, 
+          activatedAt: null,
+          deviceInfo: null
+        };
+      });
+      fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+      logToFile('📁 Создана новая база keys.json');
+    }
+    const data = fs.readFileSync(DB_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    logToFile(`❌ Ошибка чтения БД: ${e.message}`);
+    return {};
   }
-  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 }
 
 function saveDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    logToFile('💾 БД сохранена');
+  } catch (e) {
+    logToFile(`❌ Ошибка сохранения БД: ${e.message}`);
+  }
 }
 
-// ========== API ==========
+// ====== КОНФИГ ======
+function loadConfig() {
+  if (!fs.existsSync(CONFIG_FILE)) {
+    const defaultConfig = { 
+      updateMode: false, 
+      updateUrl: 'https://t.me/Shtormhackker', 
+      lastUpdate: new Date().toISOString(),
+      maintenance: false
+    };
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
+    return defaultConfig;
+  }
+  return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+}
 
-// Проверка ключа
+function saveConfig(config) {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
+// ====== API ======
+
+// 1. ПРОВЕРКА КЛЮЧА
 app.post('/api/check', (req, res) => {
   const { key } = req.body;
   const db = initDB();
-  if (db[key]) {
-    res.json({ valid: true, used: db[key].used, fingerprint: db[key].fingerprint });
+  logToFile(`🔍 Проверка ключа: ${key}`);
+  
+  if (!key) {
+    return res.json({ valid: false, error: 'Key required' });
+  }
+  
+  const keyStr = String(key).trim();
+  if (db[keyStr]) {
+    logToFile(`✅ Ключ ${keyStr} найден, used: ${db[keyStr].used}`);
+    res.json({ 
+      valid: true, 
+      used: db[keyStr].used, 
+      fingerprint: db[keyStr].fingerprint,
+      activatedAt: db[keyStr].activatedAt
+    });
   } else {
+    logToFile(`❌ Ключ ${keyStr} не найден`);
     res.json({ valid: false });
   }
 });
 
-// Активация ключа
+// 2. АКТИВАЦИЯ КЛЮЧА
 app.post('/api/activate', (req, res) => {
-  const { key, fingerprint } = req.body;
+  const { key, fingerprint, deviceInfo } = req.body;
   const db = initDB();
+  logToFile(`🔑 Активация ключа: ${key}`);
   
-  if (!db[key]) {
+  if (!key || !fingerprint) {
+    return res.json({ success: false, message: 'Key and fingerprint required' });
+  }
+  
+  const keyStr = String(key).trim();
+  
+  if (!db[keyStr]) {
+    logToFile(`❌ Ключ ${keyStr} не существует`);
     return res.json({ success: false, message: 'Chave inválida' });
   }
   
-  if (db[key].used && db[key].fingerprint !== fingerprint) {
-    return res.json({ success: false, message: 'Esta chave já está ativa em outro dispositivo' });
+  if (db[keyStr].used && db[keyStr].fingerprint !== fingerprint) {
+    logToFile(`❌ Ключ ${keyStr} уже используется на другом устройстве`);
+    return res.json({ 
+      success: false, 
+      message: 'Esta chave já está ativa em outro dispositivo',
+      code: 'ALREADY_USED'
+    });
   }
   
-  if (db[key].used && db[key].fingerprint === fingerprint) {
-    return res.json({ success: true, already: true, message: 'Chave já ativada neste dispositivo' });
+  if (db[keyStr].used && db[keyStr].fingerprint === fingerprint) {
+    logToFile(`✅ Ключ ${keyStr} уже активирован на этом устройстве`);
+    return res.json({ 
+      success: true, 
+      already: true, 
+      message: 'Chave já ativada neste dispositivo',
+      activatedAt: db[keyStr].activatedAt
+    });
   }
   
-  db[key].used = true;
-  db[key].fingerprint = fingerprint;
-  db[key].activatedAt = Date.now();
+  // Активируем
+  db[keyStr].used = true;
+  db[keyStr].fingerprint = fingerprint;
+  db[keyStr].activatedAt = Date.now();
+  db[keyStr].deviceInfo = deviceInfo || 'Unknown';
   saveDB(db);
-  res.json({ success: true, message: 'Chave ativada com sucesso!' });
+  
+  logToFile(`✅ Ключ ${keyStr} активирован!`);
+  res.json({ 
+    success: true, 
+    message: 'Chave ativada com sucesso!',
+    activatedAt: db[keyStr].activatedAt
+  });
 });
 
-// Получить статус ключа
+// 3. СТАТУС КЛЮЧА
 app.post('/api/status', (req, res) => {
   const { key } = req.body;
   const db = initDB();
-  if (db[key]) {
+  
+  if (!key) {
+    return res.json({ valid: false });
+  }
+  
+  const keyStr = String(key).trim();
+  if (db[keyStr]) {
     res.json({ 
       valid: true, 
-      used: db[key].used, 
-      fingerprint: db[key].fingerprint,
-      activatedAt: db[key].activatedAt
+      used: db[keyStr].used, 
+      fingerprint: db[keyStr].fingerprint,
+      activatedAt: db[keyStr].activatedAt,
+      deviceInfo: db[keyStr].deviceInfo
     });
   } else {
     res.json({ valid: false });
   }
 });
 
-// ========== API УПРАВЛЕНИЯ ОБНОВЛЕНИЯМИ ==========
-
-// Получить конфиг (для HTML)
+// 4. КОНФИГ
 app.get('/api/config', (req, res) => {
-  const config = loadConfig();
-  res.json(config);
+  res.json(loadConfig());
 });
 
-// Включить режим обновления (админка)
 app.post('/api/update/on', (req, res) => {
   const config = loadConfig();
   config.updateMode = true;
   config.lastUpdate = new Date().toISOString();
   saveConfig(config);
-  res.json({ success: true, message: 'Режим обновления включён', config });
+  logToFile('🔔 Режим обновления ВКЛЮЧЁН');
+  res.json({ success: true, message: 'Update mode ON' });
 });
 
-// Выключить режим обновления (админка)
 app.post('/api/update/off', (req, res) => {
   const config = loadConfig();
   config.updateMode = false;
   config.lastUpdate = new Date().toISOString();
   saveConfig(config);
-  res.json({ success: true, message: 'Режим обновления выключён', config });
+  logToFile('🔕 Режим обновления ВЫКЛЮЧЁН');
+  res.json({ success: true, message: 'Update mode OFF' });
 });
 
-// Статистика
+// 5. СТАТИСТИКА
 app.get('/api/stats', (req, res) => {
   const db = initDB();
   const stats = {
     total: Object.keys(db).length,
     used: Object.values(db).filter(k => k.used).length,
-    free: Object.values(db).filter(k => !k.used).length
+    free: Object.values(db).filter(k => !k.used).length,
+    lastUpdate: new Date().toISOString()
   };
   res.json(stats);
 });
 
-// ========== ЗАПУСК ==========
+// 6. ПОЛУЧИТЬ ВСЕ АКТИВИРОВАННЫЕ КЛЮЧИ (админка)
+app.get('/api/used-keys', (req, res) => {
+  const db = initDB();
+  const used = {};
+  Object.keys(db).forEach(key => {
+    if (db[key].used) {
+      used[key] = {
+        activatedAt: db[key].activatedAt,
+        fingerprint: db[key].fingerprint ? db[key].fingerprint.substring(0, 20) + '...' : null,
+        deviceInfo: db[key].deviceInfo
+      };
+    }
+  });
+  res.json(used);
+});
+
+// 7. СБРОС КЛЮЧА (админка)
+app.post('/api/reset-key', (req, res) => {
+  const { key } = req.body;
+  const db = initDB();
+  if (db[key]) {
+    db[key].used = false;
+    db[key].fingerprint = null;
+    db[key].activatedAt = null;
+    saveDB(db);
+    logToFile(`🔄 Ключ ${key} сброшен`);
+    res.json({ success: true, message: 'Key reset' });
+  } else {
+    res.json({ success: false, message: 'Key not found' });
+  }
+});
+
+// 8. ПОЛНЫЙ СБРОС ВСЕХ КЛЮЧЕЙ (админка)
+app.post('/api/reset-all', (req, res) => {
+  const db = initDB();
+  Object.keys(db).forEach(key => {
+    db[key].used = false;
+    db[key].fingerprint = null;
+    db[key].activatedAt = null;
+  });
+  saveDB(db);
+  logToFile('🔄 ВСЕ ключи сброшены');
+  res.json({ success: true, message: 'All keys reset' });
+});
+
+// ====== ЗАПУСК ======
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🔥 ========================================`);
+  console.log(`🔥 ERROR HUB PREMIUM SERVER v3.0`);
+  console.log(`🔥 ========================================`);
   console.log(`✅ Servidor rodando na porta ${PORT}`);
   const db = initDB();
+  const used = Object.values(db).filter(k => k.used).length;
   console.log(`📊 Total de chaves: ${Object.keys(db).length}`);
-  console.log(`🔑 Chaves usadas: ${Object.values(db).filter(k => k.used).length}`);
+  console.log(`🔑 Chaves usadas: ${used}`);
+  console.log(`📁 DB: ${DB_FILE}`);
+  console.log(`📁 LOG: ${LOG_FILE}`);
+  console.log(`🔥 ========================================\n`);
 });
