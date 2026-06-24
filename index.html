@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>ERROR HUB PREMIUM</title>
 
-<!-- ====== PWA MANIFEST ====== -->
+<!-- PWA MANIFEST -->
 <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkVSUk9SIEhVQiBQUkVNSVVNIiwKICAic2hvcnRfbmFtZSI6ICJFUlJPUiBIVUIiLAogICJkZXNjcmlwdGlvbiI6ICJQYW5lbCBkZSBjb250cm9sZSBwcmVtaXVtIiwKICAic3RhcnRfdXJsIjogIi4vIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMGEwNDExIiwKICAidGhlbWVfY29sb3IiOiAiI2ZmMWY4ZiIsCiAgImljb25zIjogWwogICAgewogICAgICAic3JjIjogImh0dHBzOi8vaS5pYmIuY28vajdSZEprdi8xMDAwMDgwMTM5LXJlbW92ZWJnLXByZXZpZXcucG5nIiwKICAgICAgInNpemVzIjogIjUxMng1MTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciLAogICAgICAicHVycG9zZSI6ICJhbnkgbWFzayBhbnlsYW5nIgogICAgfQogIF0KfQ==" />
 
 <style>
@@ -251,39 +251,56 @@
   }
   .toast.show{opacity:1}
 
+  /* ====== КРАСНАЯ КНОПКА ОБНОВЛЕНИЯ (ПОЯВЛЯЕТСЯ СВЕРХУ) ====== */
   .update-banner{
-    display:none;
-    margin:10px 0 18px 0;
-    text-align:center;
-  }
-  .update-btn{
-    padding:14px 30px;
-    background:linear-gradient(90deg,#ff4444,#cc0000);
-    color:#fff;
-    font-weight:800;
-    font-size:16px;
-    border:none;
-    cursor:pointer;
-    border-radius:8px;
-    box-shadow:0 0 30px rgba(255,68,68,.5);
-    animation: pulse 1.5s infinite;
-    letter-spacing:2px;
-    width:100%;
-    max-width:400px;
-  }
-  @keyframes pulse{
-    0%,100%{transform:scale(1)}
-    50%{transform:scale(1.02)}
-  }
-
-  /* ====== PWA INSTALL BANNER ====== */
-  .install-banner{
     display:none;
     position:fixed;
     top:0;
     left:0;
     right:0;
     z-index:9999;
+    background:linear-gradient(135deg,#ff0000,#cc0000);
+    padding:16px 20px;
+    box-shadow:0 0 40px rgba(255,0,0,.6);
+    text-align:center;
+    animation: slideDown 0.5s ease;
+  }
+  .update-banner.show{display:block}
+  @keyframes slideDown{
+    from{transform:translateY(-100%);opacity:0}
+    to{transform:translateY(0);opacity:1}
+  }
+  .update-banner .update-btn{
+    background:#fff;
+    color:#cc0000;
+    font-weight:900;
+    font-size:18px;
+    padding:12px 30px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    letter-spacing:2px;
+    box-shadow:0 0 30px rgba(255,255,255,.3);
+    transition:.3s;
+    animation: pulse 1.5s infinite;
+  }
+  .update-banner .update-btn:hover{
+    transform:scale(1.05);
+    box-shadow:0 0 50px rgba(255,255,255,.5);
+  }
+  @keyframes pulse{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(1.03)}
+  }
+
+  /* PWA INSTALL BANNER */
+  .install-banner{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:9998;
     background:linear-gradient(135deg,#13071c,#0a0411);
     border-bottom:2px solid var(--pink);
     padding:16px 20px;
@@ -294,10 +311,6 @@
     animation: slideDown 0.5s ease;
   }
   .install-banner.show{display:flex}
-  @keyframes slideDown{
-    from{transform:translateY(-100%);opacity:0}
-    to{transform:translateY(0);opacity:1}
-  }
   .install-banner .left{
     display:flex;
     align-items:center;
@@ -359,6 +372,11 @@
 <body>
 <canvas id="particles"></canvas>
 
+<!-- ====== КРАСНАЯ КНОПКА ОБНОВЛЕНИЯ (ПОЯВЛЯЕТСЯ СВЕРХУ) ====== -->
+<div class="update-banner" id="updateBanner">
+  <button class="update-btn" id="updateBtn">🔴 ДОСТУПНО ОБНОВЛЕНИЕ! НАЖМИТЕ ДЛЯ ПЕРЕХОДА</button>
+</div>
+
 <!-- ====== PWA INSTALL BANNER ====== -->
 <div class="install-banner" id="installBanner">
   <div class="left">
@@ -403,11 +421,6 @@
       <div class="stat"><div class="k">PING</div><div class="v">8 ms</div><div class="s">estável</div></div>
       <div class="stat"><div class="k">FPS</div><div class="v">240</div><div class="s">otimizado</div></div>
       <div class="stat"><div class="k">VALIDADE</div><div class="v" id="validityDisplay">1 dia</div><div class="s" id="timeLeftDisplay">⏱️ 24h 00m 00s</div></div>
-    </div>
-
-    <!-- ====== КНОПКА ОБНОВЛЕНИЯ ====== -->
-    <div class="update-banner" id="updateBanner">
-      <button class="update-btn" id="updateBtn">🔴 ДОСТУПНО ОБНОВЛЕНИЕ! НАЖМИТЕ ДЛЯ ПЕРЕХОДА</button>
     </div>
 
     <div class="menu-activation">
@@ -539,14 +552,21 @@ async function getKeyStatusOnServer(key) {
 }
 
 // ============================================================
-// ПРОВЕРКА ОБНОВЛЕНИЙ
+// ПРОВЕРКА ОБНОВЛЕНИЙ (КАЖДЫЕ 5 СЕКУНД)
 // ============================================================
 async function checkUpdate() {
   try {
     const res = await fetch('/api/update/status');
-    const config = await res.json();
-    document.getElementById('updateBanner').style.display = config.updateMode ? 'block' : 'none';
-  } catch (e) {}
+    const data = await res.json();
+    const banner = document.getElementById('updateBanner');
+    if (data.updateMode === true) {
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  } catch (e) {
+    console.log('Ошибка проверки обновлений:', e);
+  }
 }
 
 // ====== КНОПКА ВЕДЁТ В TELEGRAM ======
@@ -554,7 +574,10 @@ document.getElementById('updateBtn').addEventListener('click', () => {
   window.location.href = 'https://t.me/Shtormhackker';
 });
 
-setInterval(checkUpdate, 10000);
+// Проверяем каждые 5 секунд
+setInterval(checkUpdate, 5000);
+// И сразу при загрузке
+checkUpdate();
 
 // ============================================================
 // ТАЙМЕР 10 СЕКУНД
