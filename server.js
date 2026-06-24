@@ -10,7 +10,7 @@ app.use(express.static(__dirname));
 const DB_FILE = 'keys.json';
 const CONFIG_FILE = 'config.json';
 
-// ====== КОНФИГ ======
+// ====== КОНФИГ УПРАВЛЕНИЯ ОБНОВЛЕНИЕМ ======
 function loadConfig() {
   if (!fs.existsSync(CONFIG_FILE)) {
     const defaultConfig = { 
@@ -119,7 +119,7 @@ function saveDB(db) {
   console.log('💾 БД сохранена');
 }
 
-// ====== API ======
+// ====== API ДЛЯ КЛЮЧЕЙ ======
 
 // Проверка ключа
 app.post('/api/check', (req, res) => {
@@ -190,7 +190,7 @@ app.get('/api/stats', (req, res) => {
   res.json({ total: Object.keys(db).length, used: used, free: Object.keys(db).length - used });
 });
 
-// ====== УПРАВЛЕНИЕ ОБНОВЛЕНИЕМ ЧЕРЕЗ ССЫЛКУ ======
+// ====== УПРАВЛЕНИЕ ОБНОВЛЕНИЕМ ======
 
 // Статус обновления
 app.get('/api/update/status', (req, res) => {
@@ -209,7 +209,11 @@ app.get('/api/update/on', (req, res) => {
   config.lastUpdate = new Date().toISOString();
   saveConfig(config);
   console.log('🔴 Режим обновления ВКЛЮЧЁН');
-  res.json({ success: true, message: 'Update mode ON', updateMode: true });
+  res.json({ 
+    success: true, 
+    message: 'Update mode ON',
+    updateMode: true
+  });
 });
 
 // Выключить обновление
@@ -219,10 +223,14 @@ app.get('/api/update/off', (req, res) => {
   config.lastUpdate = new Date().toISOString();
   saveConfig(config);
   console.log('🟢 Режим обновления ВЫКЛЮЧЁН');
-  res.json({ success: true, message: 'Update mode OFF', updateMode: false });
+  res.json({ 
+    success: true, 
+    message: 'Update mode OFF',
+    updateMode: false
+  });
 });
 
-// Изменить ссылку
+// Изменить ссылку для обновления
 app.get('/api/update/url', (req, res) => {
   const { url } = req.query;
   if (!url) {
@@ -231,7 +239,11 @@ app.get('/api/update/url', (req, res) => {
   const config = loadConfig();
   config.updateUrl = url;
   saveConfig(config);
-  res.json({ success: true, message: 'Update URL updated', updateUrl: url });
+  res.json({ 
+    success: true, 
+    message: 'Update URL updated',
+    updateUrl: url
+  });
 });
 
 // ====== ЗАПУСК ======
