@@ -405,6 +405,7 @@
       <div class="stat"><div class="k">VALIDADE</div><div class="v" id="validityDisplay">1 dia</div><div class="s" id="timeLeftDisplay">⏱️ 24h 00m 00s</div></div>
     </div>
 
+    <!-- ====== КНОПКА ОБНОВЛЕНИЯ ====== -->
     <div class="update-banner" id="updateBanner">
       <button class="update-btn" id="updateBtn">🔴 ДОСТУПНО ОБНОВЛЕНИЕ! НАЖМИТЕ ДЛЯ ПЕРЕХОДА</button>
     </div>
@@ -487,16 +488,14 @@ closeInstallBtn.addEventListener('click', () => {
   installBanner.classList.remove('show');
 });
 
-// Показываем баннер если PWA уже установлено
 window.addEventListener('appinstalled', () => {
   installBanner.classList.remove('show');
   showToast('✅ ERROR HUB установлен!');
 });
 
 // ============================================================
-// ОСТАЛЬНОЙ КОД (FINGERPRINT, API, LOGIN, MODULES и т.д.)
+// FINGERPRINT
 // ============================================================
-
 function getFingerprint() {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -509,6 +508,9 @@ function getFingerprint() {
 
 const DEVICE_FINGERPRINT = getFingerprint();
 
+// ============================================================
+// ЗАПРОСЫ К СЕРВЕРУ
+// ============================================================
 async function checkKeyOnServer(key) {
   const res = await fetch('/api/check', {
     method: 'POST',
@@ -536,18 +538,27 @@ async function getKeyStatusOnServer(key) {
   return await res.json();
 }
 
+// ============================================================
+// ПРОВЕРКА ОБНОВЛЕНИЙ
+// ============================================================
 async function checkUpdate() {
   try {
-    const res = await fetch('/api/config');
+    const res = await fetch('/api/update/status');
     const config = await res.json();
     document.getElementById('updateBanner').style.display = config.updateMode ? 'block' : 'none';
   } catch (e) {}
 }
+
+// ====== КНОПКА ВЕДЁТ В TELEGRAM ======
 document.getElementById('updateBtn').addEventListener('click', () => {
   window.location.href = 'https://t.me/Shtormhackker';
 });
+
 setInterval(checkUpdate, 10000);
 
+// ============================================================
+// ТАЙМЕР 10 СЕКУНД
+// ============================================================
 let countdownTimer = null;
 let countdownValue = 10;
 let countdownActive = false;
@@ -584,6 +595,9 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('key').addEventListener('input', resetCountdown);
 document.getElementById('enter').addEventListener('click', resetCountdown);
 
+// ============================================================
+// АВТОВХОД
+// ============================================================
 async function autoLogin(key) {
   try {
     const checkResult = await checkKeyOnServer(key);
@@ -620,6 +634,9 @@ async function autoLogin(key) {
   }
 }
 
+// ============================================================
+// LOGIN
+// ============================================================
 const status = document.getElementById('status');
 const card = document.getElementById('loginCard');
 const panel = document.getElementById('panel');
@@ -789,6 +806,9 @@ function startSessionTimer(key) {
   sessionTimer = setInterval(updateTimeLeft, 1000);
 }
 
+// ============================================================
+// ATIVAÇÃO
+// ============================================================
 document.getElementById('menuActBtn').addEventListener('click', () => {
   document.getElementById('modal').classList.add('show');
   speakRussian('Выберите версию Free Fire: max или оригинал.');
@@ -861,7 +881,7 @@ document.getElementById('modal').addEventListener('click', (e) => {
 });
 
 // ============================================================
-// MODULES & AIM
+// МОДУЛИ И AIM
 // ============================================================
 const MODULES = [
   { id: 'aimbot', label: 'AIMBOT' },
