@@ -183,11 +183,37 @@ app.post('/api/status', (req, res) => {
   }
 });
 
-// Статистика
+// ====== СТАТИСТИКА ======
+
+// Общая статистика
 app.get('/api/stats', (req, res) => {
   const db = initDB();
   const used = Object.values(db).filter(k => k.used).length;
-  res.json({ total: Object.keys(db).length, used: used, free: Object.keys(db).length - used });
+  res.json({ 
+    total: Object.keys(db).length, 
+    used: used,
+    free: Object.keys(db).length - used
+  });
+});
+
+// Список использованных ключей
+app.get('/api/used-keys', (req, res) => {
+  const db = initDB();
+  const usedKeys = {};
+  Object.keys(db).forEach(key => {
+    if (db[key].used) {
+      usedKeys[key] = {
+        activatedAt: db[key].activatedAt,
+        fingerprint: db[key].fingerprint ? db[key].fingerprint.substring(0, 20) + '...' : null
+      };
+    }
+  });
+  res.json({
+    total: Object.keys(db).length,
+    used: Object.keys(usedKeys).length,
+    free: Object.keys(db).length - Object.keys(usedKeys).length,
+    keys: usedKeys
+  });
 });
 
 // ====== УПРАВЛЕНИЕ ОБНОВЛЕНИЕМ ======
