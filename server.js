@@ -9,7 +9,7 @@ app.use(express.static(__dirname));
 
 const DB_FILE = 'keys.json';
 
-// ====== ВСЕ 1000 КЛЮЧЕЙ ======
+// ====== ВСЕ 1000 КЛЮЧЕЙ (ОБНОВЛЕНЫ) ======
 const ALL_KEYS = [
 30487192,57124983,68201357,49058621,85743209,13976842,72631598,54892076,21345789,96018324,
 87532014,43210978,69824531,50789623,18457302,32961875,75640219,24198763,80365471,59723146,
@@ -18,7 +18,7 @@ const ALL_KEYS = [
 37051986,80245713,69582347,14829065,53768412,96413578,21679830,47502361,38914672,62058394,
 15327869,94650182,82734695,40187932,68571423,23906857,56423918,79218306,31856740,45769281,
 69081237,23456798,80124563,97648320,15273896,48930215,63712489,81597602,34029876,57264183,
-92810734,46583920,78156324,20964758,63428917,51374689,87259061,34981276,16593840,72605493,
+92810734,46583920,78156324,20964758,51374689,87259061,34981276,16593840,72605493,
 49865123,30798412,65217894,81347605,92450671,17823549,64908732,53186974,28641390,70596128,
 94257830,18640392,75961348,20314986,67482139,89507234,31726845,56098417,42153709,83645297,
 19876543,60293148,74582091,36914287,58167904,23745861,90416735,62538719,81326045,47652918,
@@ -102,8 +102,6 @@ function saveDB(db) {
 }
 
 // ====== API ======
-
-// 1. ПРОВЕРКА
 app.post('/api/check', (req, res) => {
   const { key } = req.body;
   const db = initDB();
@@ -124,7 +122,6 @@ app.post('/api/check', (req, res) => {
   }
 });
 
-// 2. АКТИВАЦИЯ (С БЛОКИРОВКОЙ!)
 app.post('/api/activate', (req, res) => {
   const { key, fingerprint } = req.body;
   const db = initDB();
@@ -140,7 +137,6 @@ app.post('/api/activate', (req, res) => {
     return res.json({ success: false, message: 'Chave inválida' });
   }
   
-  // УЖЕ ИСПОЛЬЗУЕТСЯ НА ДРУГОМ УСТРОЙСТВЕ
   if (db[keyStr].used && db[keyStr].fingerprint !== fingerprint) {
     console.log(`❌ Ключ ${keyStr} уже занят!`);
     return res.json({ 
@@ -149,7 +145,6 @@ app.post('/api/activate', (req, res) => {
     });
   }
   
-  // УЖЕ АКТИВИРОВАН НА ЭТОМ УСТРОЙСТВЕ
   if (db[keyStr].used && db[keyStr].fingerprint === fingerprint) {
     console.log(`✅ Ключ ${keyStr} уже активирован на этом устройстве`);
     return res.json({ 
@@ -159,7 +154,6 @@ app.post('/api/activate', (req, res) => {
     });
   }
   
-  // НОВАЯ АКТИВАЦИЯ — БЛОКИРУЕМ!
   db[keyStr].used = true;
   db[keyStr].fingerprint = fingerprint;
   db[keyStr].activatedAt = Date.now();
@@ -172,7 +166,6 @@ app.post('/api/activate', (req, res) => {
   });
 });
 
-// 3. СТАТУС
 app.post('/api/status', (req, res) => {
   const { key } = req.body;
   const db = initDB();
@@ -193,7 +186,6 @@ app.post('/api/status', (req, res) => {
   }
 });
 
-// 4. СТАТИСТИКА
 app.get('/api/stats', (req, res) => {
   const db = initDB();
   const used = Object.values(db).filter(k => k.used).length;
@@ -204,7 +196,6 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// 5. КОНФИГ
 app.get('/api/config', (req, res) => {
   res.json({ updateMode: false });
 });
