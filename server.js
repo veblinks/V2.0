@@ -8,8 +8,26 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 const DB_FILE = 'keys.json';
+const CONFIG_FILE = 'config.json';
 
-// ====== ВСЕ 1000 КЛЮЧЕЙ (ОБНОВЛЕНЫ) ======
+// ====== КОНФИГ ======
+function loadConfig() {
+  if (!fs.existsSync(CONFIG_FILE)) {
+    const defaultConfig = { 
+      updateMode: false, 
+      updateUrl: 'https://t.me/Shtormhackker',
+      lastUpdate: new Date().toISOString()
+    };
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
+  }
+  return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+}
+
+function saveConfig(config) {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
+// ====== ВСЕ 1000 КЛЮЧЕЙ ======
 const ALL_KEYS = [
 30487192,57124983,68201357,49058621,85743209,13976842,72631598,54892076,21345789,96018324,
 87532014,43210978,69824531,50789623,18457302,32961875,75640219,24198763,80365471,59723146,
@@ -102,26 +120,23 @@ function saveDB(db) {
 }
 
 // ====== API ======
+
+// Проверка ключа
 app.post('/api/check', (req, res) => {
   const { key } = req.body;
   const db = initDB();
   console.log(`🔍 Проверка: ${key}`);
   
   if (!key) return res.json({ valid: false });
-  
   const keyStr = String(key).trim();
-  
   if (db[keyStr]) {
-    res.json({ 
-      valid: true, 
-      used: db[keyStr].used,
-      fingerprint: db[keyStr].fingerprint
-    });
+    res.json({ valid: true, used: db[keyStr].used, fingerprint: db[keyStr].fingerprint });
   } else {
     res.json({ valid: false });
   }
 });
 
+// Активация ключа
 app.post('/api/activate', (req, res) => {
   const { key, fingerprint } = req.body;
   const db = initDB();
@@ -139,65 +154,84 @@ app.post('/api/activate', (req, res) => {
   
   if (db[keyStr].used && db[keyStr].fingerprint !== fingerprint) {
     console.log(`❌ Ключ ${keyStr} уже занят!`);
-    return res.json({ 
-      success: false, 
-      message: 'Esta chave já está ativa em outro dispositivo'
-    });
+    return res.json({ success: false, message: 'Esta chave já está ativa em outro dispositivo' });
   }
   
   if (db[keyStr].used && db[keyStr].fingerprint === fingerprint) {
     console.log(`✅ Ключ ${keyStr} уже активирован на этом устройстве`);
-    return res.json({ 
-      success: true, 
-      already: true, 
-      message: 'Chave já ativada neste dispositivo'
-    });
+    return res.json({ success: true, already: true, message: 'Chave já ativada neste dispositivo' });
   }
   
   db[keyStr].used = true;
   db[keyStr].fingerprint = fingerprint;
   db[keyStr].activatedAt = Date.now();
   saveDB(db);
-  
   console.log(`✅ Ключ ${keyStr} заблокирован!`);
-  res.json({ 
-    success: true, 
-    message: 'Chave ativada com sucesso!'
-  });
+  res.json({ success: true, message: 'Chave ativada com sucesso!' });
 });
 
+// Статус ключа
 app.post('/api/status', (req, res) => {
   const { key } = req.body;
   const db = initDB();
-  
   if (!key) return res.json({ valid: false });
-  
   const keyStr = String(key).trim();
-  
   if (db[keyStr]) {
-    res.json({ 
-      valid: true, 
-      used: db[keyStr].used,
-      fingerprint: db[keyStr].fingerprint,
-      activatedAt: db[keyStr].activatedAt
-    });
+    res.json({ valid: true, used: db[keyStr].used, fingerprint: db[keyStr].fingerprint, activatedAt: db[keyStr].activatedAt });
   } else {
     res.json({ valid: false });
   }
 });
 
+// Статистика
 app.get('/api/stats', (req, res) => {
   const db = initDB();
   const used = Object.values(db).filter(k => k.used).length;
+  res.json({ total: Object.keys(db).length, used: used, free: Object.keys(db).length - used });
+});
+
+// ====== УПРАВЛЕНИЕ ОБНОВЛЕНИЕМ ЧЕРЕЗ ССЫЛКУ ======
+
+// Статус обновления
+app.get('/api/update/status', (req, res) => {
+  const config = loadConfig();
   res.json({ 
-    total: Object.keys(db).length, 
-    used: used,
-    free: Object.keys(db).length - used
+    updateMode: config.updateMode,
+    lastUpdate: config.lastUpdate,
+    updateUrl: config.updateUrl
   });
 });
 
-app.get('/api/config', (req, res) => {
-  res.json({ updateMode: false });
+// Включить обновление
+app.get('/api/update/on', (req, res) => {
+  const config = loadConfig();
+  config.updateMode = true;
+  config.lastUpdate = new Date().toISOString();
+  saveConfig(config);
+  console.log('🔴 Режим обновления ВКЛЮЧЁН');
+  res.json({ success: true, message: 'Update mode ON', updateMode: true });
+});
+
+// Выключить обновление
+app.get('/api/update/off', (req, res) => {
+  const config = loadConfig();
+  config.updateMode = false;
+  config.lastUpdate = new Date().toISOString();
+  saveConfig(config);
+  console.log('🟢 Режим обновления ВЫКЛЮЧЁН');
+  res.json({ success: true, message: 'Update mode OFF', updateMode: false });
+});
+
+// Изменить ссылку
+app.get('/api/update/url', (req, res) => {
+  const { url } = req.query;
+  if (!url) {
+    return res.json({ success: false, message: 'URL required' });
+  }
+  const config = loadConfig();
+  config.updateUrl = url;
+  saveConfig(config);
+  res.json({ success: true, message: 'Update URL updated', updateUrl: url });
 });
 
 // ====== ЗАПУСК ======
@@ -212,5 +246,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📊 Total: ${Object.keys(db).length}`);
   console.log(`🔑 Usadas: ${used}`);
   console.log(`📁 DB: ${DB_FILE}`);
+  console.log(`📁 CONFIG: ${CONFIG_FILE}`);
   console.log(`🔥 ========================================\n`);
 });
